@@ -59,8 +59,10 @@
           </div>
 
           <div class="content__result">
-            <p>Итого: 0 ₽</p>
-            <button type="button" class="button" disabled>Готовьте!</button>
+             <p>Итого: {{ price }} ₽</p>
+            <button type="button" class="button" :disabled="!canSubmit">
+              Готовьте!
+            </button>
           </div>
         </div>
       </div>
@@ -69,12 +71,16 @@
 </template>
 
 <script setup>
-import { reactive } from "vue";
+import { reactive, computed } from "vue";
 
 import doughItems from "@/mocks/dough.json";
 import ingredientItems from "@/mocks/ingredients.json";
 import sauceItems from "@/mocks/sauces.json";
 import sizeItems from "@/mocks/sizes.json";
+
+import doughSizes from "@/common/data/doughSizes";
+import saucesMap from "@/common/data/sauces";
+import sizesMap from "@/common/data/sizes";
 
 import { MAX_INGREDIENT_COUNT } from "@/common/constants";
 
@@ -93,6 +99,27 @@ const pizza = reactive({
   // { id ингредиента: количество }, сначала у всех 0
   ingredients: Object.fromEntries(ingredientItems.map(({ id }) => [id, 0])),
 });
+
+// Цена пиццы: (тесто + соус + ингредиенты) × множитель размера
+const price = computed(() => {
+  const dough = doughItems.find(({ id }) => doughSizes[id] === pizza.dough);
+  const sauce = sauceItems.find(({ id }) => saucesMap[id] === pizza.sauce);
+  const size = sizeItems.find(({ id }) => sizesMap[id] === pizza.size);
+
+  const ingredientsPrice = ingredientItems.reduce(
+    (sum, { id, price }) => sum + price * pizza.ingredients[id],
+    0
+  );
+
+  return (dough.price + sauce.price + ingredientsPrice) * size.multiplier;
+});
+
+// Кнопка «Готовьте!» активна, если есть название и хотя бы один ингредиент
+const canSubmit = computed(
+  () =>
+    pizza.name.trim() !== "" &&
+    Object.values(pizza.ingredients).some((count) => count > 0)
+);
 
 const updateIngredientAmount = (id, count) => {
   pizza.ingredients[id] = count;
